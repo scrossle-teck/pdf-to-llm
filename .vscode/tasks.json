@@ -1,0 +1,18 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Assistant: Bootstrap",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/assistant-bootstrap.ps1",
+        "-InstallDev"
+      ],
+      "problemMatcher": [],
+      "group": "none"
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+Initialize a repo and first push:
+git init
+git add -A && git commit -m "chore: initial template"
+git remote add origin https://github.com/<owner>/<repo>.git
+git push -u origin HEAD
