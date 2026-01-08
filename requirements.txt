@@ -1,3 +1,4 @@
 # Runtime dependencies for your project
-# Add packages here, for example:
-# requests>=2.32.0
+typer>=0.12.0
+PyYAML>=6.0
+PyMuPDF>=1.24.0
