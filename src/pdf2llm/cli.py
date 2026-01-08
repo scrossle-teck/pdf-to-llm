@@ -68,6 +68,23 @@ def _touch_stage(root: Path, name: str) -> None:
     _ensure_dir(root / "artifacts" / name)
 
 
+def _write_stage_metrics(root: Path, stage: str, cfg: PipelineConfig) -> None:
+    import json
+    metrics_dir = root / "artifacts" / "metrics"
+    _ensure_dir(metrics_dir)
+    sr = cfg.models.stages.get(stage)
+    data = {
+        "stage": stage,
+        "engine": sr.engine if sr else "none",
+        "sample_rate": sr.sample_rate if sr else 0.0,
+        "max_tokens": sr.max_tokens if sr else 0,
+        "escalate_when": sr.escalate_when if sr else [],
+        "escalate_to": sr.escalate_to if sr else None,
+        "escalate_cap": sr.escalate_cap if sr else 0,
+    }
+    (metrics_dir / f"{stage}.json").write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+
 @app.command()
 def extract(ctx: typer.Context, pdf: Path = typer.Option(..., exists=True)):
     state = ctx.obj
@@ -123,6 +140,7 @@ def structure(ctx: typer.Context, pdf: Path = typer.Option(..., exists=True)):
     out_root = resolve_output_root(cfg, state["out"])
     root = _doc_root(out_root, pdf)
     _touch_stage(root, "structure")
+    _write_stage_metrics(root, "structure", cfg)
     pages_dir = root / "artifacts" / "pages"
     blocks_path = root / "artifacts" / "structure" / "blocks.jsonl"
     blocks = []
@@ -144,6 +162,7 @@ def tables(ctx: typer.Context, pdf: Path = typer.Option(..., exists=True)):
     out_root = resolve_output_root(cfg, state["out"])
     root = _doc_root(out_root, pdf)
     _touch_stage(root, "tables")
+    _write_stage_metrics(root, "tables", cfg)
     tbl_dir = root / "artifacts" / "tables"
     _ensure_dir(tbl_dir)
     count = _extract_tables(pdf, tbl_dir)
@@ -164,7 +183,12 @@ def figures(ctx: typer.Context, pdf: Path = typer.Option(..., exists=True)):
 
 
 @app.command()
-def ocr(ctx: typer.Context, pdf: Path = typer.Option(..., exists=True)):
+def ocr(
+    ctx: typer.Context,
+    pdf: Path = typer.Option(..., exists=True),
+    force: bool = typer.Option(False, "--force", help="OCR all pages, ignoring existing text"),
+    dpi: int = typer.Option(300, "--dpi", help="Rasterization DPI for OCR"),
+):
     state = ctx.obj
     cfg: PipelineConfig = state["cfg"]
     out_root = resolve_output_root(cfg, state["out"])
@@ -193,17 +217,21 @@ def ocr(ctx: typer.Context, pdf: Path = typer.Option(..., exists=True)):
     # Perform OCR only where text is empty; allow override via env vars
     pages_dir = root / "artifacts" / "pages"
     to_process: List[int] = []
-    if pages_dir.exists():
-        for page_file in sorted(pages_dir.glob("*.json")):
-            obj = json.loads(page_file.read_text(encoding="utf-8"))
-            text = obj.get("text", "") or ""
-            pn = int(obj.get("page", 0))
-            if len(text.strip()) == 0:
-                to_process.append(pn)
-    else:
-        # Fallback: OCR all pages if no text artifacts present
+    if force:
         pages, _ = _pdf_basic_info(pdf)
         to_process = list(range(1, pages + 1))
+    else:
+        if pages_dir.exists():
+            for page_file in sorted(pages_dir.glob("*.json")):
+                obj = json.loads(page_file.read_text(encoding="utf-8"))
+                text = obj.get("text", "") or ""
+                pn = int(obj.get("page", 0))
+                if len(text.strip()) == 0:
+                    to_process.append(pn)
+        else:
+            # Fallback: OCR all pages if no text artifacts present
+            pages, _ = _pdf_basic_info(pdf)
+            to_process = list(range(1, pages + 1))
 
     used_cmd = None
     # Optional override via environment variable PDF2LLM_TESSERACT_CMD
@@ -217,7 +245,7 @@ def ocr(ctx: typer.Context, pdf: Path = typer.Option(..., exists=True)):
         except Exception:
             used_cmd = None
 
-    count = _ocr_pages(pdf, ocr_dir, to_process)
+    count = _ocr_pages(pdf, ocr_dir, to_process, dpi=dpi)
     status["pages_processed"] = count
     if used_cmd:
         status["tesseract_cmd"] = used_cmd

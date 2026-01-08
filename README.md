@@ -108,6 +108,30 @@ You can also run the whole pipeline via the task script:
 ./scripts/task.ps1 -PdfPath ".\docs\sample.pdf" -OutDir ".\out"
 ```
 
+### OCR
+
+The pipeline includes an OCR stage that rasterizes pages and extracts text via Tesseract (pytesseract). Use it when PDFs contain scanned pages or low-quality text:
+
+```powershell
+# Run only the OCR stage (default DPI 200)
+.\.venv\Scripts\python.exe -m pdf2llm --out .\out ocr --pdf .\docs\sample.pdf --dpi 200
+
+# Force re-run even if outputs exist
+.\.venv\Scripts\python.exe -m pdf2llm --out .\out ocr --pdf .\docs\sample.pdf --force
+
+# Optional: point directly to tesseract executable if not on PATH
+$env:PDF2LLM_TESSERACT_CMD = 'C:\Program Files\Tesseract-OCR\tesseract.exe'
+.\.venv\Scripts\python.exe -m pdf2llm --out .\out ocr --pdf .\docs\sample.pdf
+```
+
+Outputs are written under the deterministic output root:
+- `ocr/pNNNNN.txt` — per-page OCR text files
+- `ocr.jsonl` — index of OCR results
+
+Notes:
+- Tests that require Tesseract will be skipped automatically if it's unavailable.
+- DPI can be tuned via `--dpi` for accuracy/speed trade-offs.
+
 ## Setup Script (optional)
 
 Run a single script to create the venv and install dependencies (uses the project `.venv` when present):
