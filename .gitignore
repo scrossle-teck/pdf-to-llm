@@ -1,1 +1,33 @@
+# Python
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+
+# Environments
+.venv/
+env/
+venv/
+
+# OS/Editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Builds/Dist
+dist/
+build/
+*.egg-info/
+
+# Project outputs
+out/
+artifacts/
+
+# Logs
+*.log
+
+# Secrets
+.env
 deprecated/
