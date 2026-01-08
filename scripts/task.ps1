@@ -21,13 +21,11 @@ if (Test-Path $pythonPath) {
     Write-Host "[task.ps1] Using system Python from PATH."
 }
 
-# Optional: run pdf2llm pipeline when PdfPath is provided
+# Optional: run oneshot conversion when PdfPath is provided
 if ($PdfPath) {
-    $argsList = @("-m", "pdf2llm", "all", "--pdf", $PdfPath)
+    $argsList = @("-m", "src.oneshot", "oneshot", "--pdf", $PdfPath)
     if ($OutDir) { $argsList += @("--out", $OutDir) }
-    if ($Resume) { $argsList += @("--resume") }
-    if ($MaxWorkers -gt 0) { $argsList += @("--max-workers", $MaxWorkers) }
-    Write-Host "[task.ps1] Running pipeline: $pythonPath $($argsList -join ' ')"
+    Write-Host "[task.ps1] Running oneshot: $pythonPath $($argsList -join ' ')"
     & $pythonPath @argsList
 } else {
     $mainScript = Join-Path $PWD "src\main.py"
