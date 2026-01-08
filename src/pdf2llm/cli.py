@@ -154,7 +154,10 @@ def figures(ctx: typer.Context, pdf: Path = typer.Option(..., exists=True)):
     out_root = resolve_output_root(cfg, state["out"])
     root = _doc_root(out_root, pdf)
     _touch_stage(root, "figures")
-    typer.echo(f"[figures] stub complete at {root}")
+    figs_dir = root / "artifacts" / "figures"
+    _ensure_dir(figs_dir)
+    _extract_figures(pdf, figs_dir)
+    typer.echo(f"[figures] extracted images to {figs_dir}")
 
 
 @app.command()
@@ -208,8 +211,8 @@ def report(ctx: typer.Context, pdf: Path = typer.Option(..., exists=True)):
     out_root = resolve_output_root(cfg, state["out"])
     root = _doc_root(out_root, pdf)
     _ensure_dir(root)
-    (root / "report.md").write_text("# Report\n\nStub report.\n", encoding="utf-8")
-    typer.echo(f"[report] stub complete at {root}")
+    _write_report(root)
+    typer.echo(f"[report] wrote {root / 'report.md'}")
 
 
 @app.command()
@@ -268,3 +271,45 @@ def _render_markdown_from_blocks(blocks_path: Path, out_path: Path) -> None:
                 out_lines.append(text)
             out_lines.append("")
     out_path.write_text("\n".join(out_lines), encoding="utf-8")
+
+
+def _extract_figures(pdf: Path, out_dir: Path) -> None:
+    import fitz  # type: ignore
+    import hashlib
+    with fitz.open(pdf) as doc:
+        for i, page in enumerate(doc):
+            for img_index, img in enumerate(page.get_images(full=True)):
+                xref = img[0]
+                pix = fitz.Pixmap(doc, xref)
+                try:
+                    if pix.n >= 5:  # CMYK or similar
+                        pix = fitz.Pixmap(fitz.csRGB, pix)
+                    data = pix.tobytes("png")
+                finally:
+                    pass
+                h = hashlib.sha256(data).hexdigest()[:8]
+                p = out_dir / f"p{i+1:05d}_img{img_index+1:03d}_{h}.png"
+                with p.open("wb") as f:
+                    f.write(data)
+
+
+def _write_report(root: Path) -> None:
+    import json
+    manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8")) if (root / "manifest.json").exists() else {}
+    pages_dir = root / "artifacts" / "pages"
+    blocks_path = root / "artifacts" / "structure" / "blocks.jsonl"
+    figs_dir = root / "artifacts" / "figures"
+    num_pages = len(list(pages_dir.glob("*.json"))) if pages_dir.exists() else 0
+    num_blocks = sum(1 for _ in open(blocks_path, "r", encoding="utf-8")) if blocks_path.exists() else 0
+    num_figs = len(list(figs_dir.glob("*.png"))) if figs_dir.exists() else 0
+    lines = [
+        "# Report",
+        "",
+        f"PDF: {manifest.get('pdf', '')}",
+        f"Pages (manifest): {manifest.get('pages', 0)}",
+        f"Pages (extracted): {num_pages}",
+        f"Blocks: {num_blocks}",
+        f"Figures: {num_figs}",
+        "",
+    ]
+    (root / "report.md").write_text("\n".join(lines), encoding="utf-8")
