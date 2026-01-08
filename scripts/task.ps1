@@ -23,7 +23,7 @@ if (Test-Path $pythonPath) {
 
 # Optional: run oneshot conversion when PdfPath is provided
 if ($PdfPath) {
-    $argsList = @("-m", "src.oneshot", "oneshot", "--pdf", $PdfPath)
+    $argsList = @("-m", "src.oneshot", "--pdf", $PdfPath)
     if ($OutDir) { $argsList += @("--out", $OutDir) }
     Write-Host "[task.ps1] Running oneshot: $pythonPath $($argsList -join ' ')"
     & $pythonPath @argsList
