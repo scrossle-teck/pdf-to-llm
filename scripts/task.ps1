@@ -1,6 +1,10 @@
 param(
     [switch]$Verbose,
-    [switch]$RunTests
+    [switch]$RunTests,
+    [string]$PdfPath,
+    [string]$OutDir,
+    [switch]$Resume,
+    [int]$MaxWorkers = 0
 )
 
 Write-Host "[task.ps1] Starting template task..."
@@ -17,12 +21,22 @@ if (Test-Path $pythonPath) {
     Write-Host "[task.ps1] Using system Python from PATH."
 }
 
-$mainScript = Join-Path $PWD "src\main.py"
-if (Test-Path $mainScript) {
-    Write-Host "[task.ps1] Running: $pythonPath $mainScript"
-    & $pythonPath $mainScript
+# Optional: run pdf2llm pipeline when PdfPath is provided
+if ($PdfPath) {
+    $argsList = @("-m", "pdf2llm", "all", "--pdf", $PdfPath)
+    if ($OutDir) { $argsList += @("--out", $OutDir) }
+    if ($Resume) { $argsList += @("--resume") }
+    if ($MaxWorkers -gt 0) { $argsList += @("--max-workers", $MaxWorkers) }
+    Write-Host "[task.ps1] Running pipeline: $pythonPath $($argsList -join ' ')"
+    & $pythonPath @argsList
 } else {
-    Write-Host "[task.ps1] No src\\main.py found. Skipping Python run." -ForegroundColor Yellow
+    $mainScript = Join-Path $PWD "src\main.py"
+    if (Test-Path $mainScript) {
+        Write-Host "[task.ps1] Running: $pythonPath $mainScript"
+        & $pythonPath $mainScript
+    } else {
+        Write-Host "[task.ps1] No src\\main.py found. Skipping Python run." -ForegroundColor Yellow
+    }
 }
 
 if ($RunTests) {
