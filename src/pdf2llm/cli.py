@@ -144,7 +144,10 @@ def tables(ctx: typer.Context, pdf: Path = typer.Option(..., exists=True)):
     out_root = resolve_output_root(cfg, state["out"])
     root = _doc_root(out_root, pdf)
     _touch_stage(root, "tables")
-    typer.echo(f"[tables] stub complete at {root}")
+    tbl_dir = root / "artifacts" / "tables"
+    _ensure_dir(tbl_dir)
+    count = _extract_tables(pdf, tbl_dir)
+    typer.echo(f"[tables] extracted {count} table(s) to {tbl_dir}")
 
 
 @app.command()
@@ -294,6 +297,36 @@ def _extract_figures(pdf: Path, out_dir: Path) -> None:
                 p = out_dir / f"p{i+1:05d}_img{img_index+1:03d}_{h}.png"
                 with p.open("wb") as f:
                     f.write(data)
+
+
+def _extract_tables(pdf: Path, out_dir: Path) -> int:
+    import csv
+    import json
+    import pdfplumber  # type: ignore
+
+    idx = out_dir / "tables.jsonl"
+    n = 0
+    with pdfplumber.open(str(pdf)) as doc, idx.open("w", encoding="utf-8") as index_f:
+        for pi, page in enumerate(doc.pages, start=1):
+            try:
+                tables = page.extract_tables() or []
+            except Exception:
+                tables = []
+            for ti, rows in enumerate(tables, start=1):
+                if not rows:
+                    continue
+                n += 1
+                csv_path = out_dir / f"p{pi:05d}_t{ti:03d}.csv"
+                with csv_path.open("w", newline="", encoding="utf-8") as f:
+                    writer = csv.writer(f)
+                    for r in rows:
+                        writer.writerow([c if c is not None else "" for c in r])
+                index_f.write(json.dumps({
+                    "page": pi,
+                    "table_index": ti,
+                    "file": csv_path.name,
+                }) + "\n")
+    return n
 
 
 def _write_report(root: Path) -> None:

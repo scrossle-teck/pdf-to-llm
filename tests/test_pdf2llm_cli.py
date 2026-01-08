@@ -63,3 +63,9 @@ def test_preflight_and_extract(tmp_path: Path):
     s = combined.read_text(encoding="utf-8")
     assert "<!-- p:1 -->" in s
     assert "Hello PDF page 1" in s
+
+    # tables: should create the directory and index (may be zero tables)
+    r5 = run_cli("--out", str(out_dir), "tables", "--pdf", str(pdf_path))
+    assert r5.returncode == 0, r5.stderr
+    tables_dir = root / "artifacts" / "tables"
+    assert tables_dir.is_dir()
