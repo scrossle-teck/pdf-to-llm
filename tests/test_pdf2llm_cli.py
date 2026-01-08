@@ -50,3 +50,16 @@ def test_preflight_and_extract(tmp_path: Path):
     first = json.loads(page_files[0].read_text(encoding="utf-8"))
     assert first["page"] == 1
     assert "Hello PDF" in first["text"]
+
+    # structure + render
+    r3 = run_cli("--out", str(out_dir), "structure", "--pdf", str(pdf_path))
+    assert r3.returncode == 0, r3.stderr
+    blocks = root / "artifacts" / "structure" / "blocks.jsonl"
+    assert blocks.exists()
+
+    r4 = run_cli("--out", str(out_dir), "render", "--pdf", str(pdf_path))
+    assert r4.returncode == 0, r4.stderr
+    combined = root / "render" / "combined.md"
+    s = combined.read_text(encoding="utf-8")
+    assert "<!-- p:1 -->" in s
+    assert "Hello PDF page 1" in s
