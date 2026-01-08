@@ -106,7 +106,11 @@ def load_config(path: Optional[Path]) -> PipelineConfig:
     cfg.concurrency = int(data.get("concurrency", cfg.concurrency))
 
     ocr = get_nested(data, "ocr", {})
-    cfg.ocr.mode = ocr.get("mode", cfg.ocr.mode)
+    mode_val = ocr.get("mode", cfg.ocr.mode)
+    if isinstance(mode_val, bool):
+        cfg.ocr.mode = "on" if mode_val else "off"
+    else:
+        cfg.ocr.mode = str(mode_val)
     cfg.ocr.lang = ocr.get("lang", cfg.ocr.lang)
 
     chunk = get_nested(data, "chunking", {})

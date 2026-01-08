@@ -16,11 +16,13 @@ def make_sample_pdf(path: Path, pages: int = 2) -> None:
     doc.close()
 
 
-def run_cli(*args: str, cwd: Path | None = None) -> subprocess.CompletedProcess:
+def run_cli(*args: str, cwd: Path | None = None, env_extra: dict | None = None) -> subprocess.CompletedProcess:
     # Ensure the src/ folder is on PYTHONPATH so `-m pdf2llm` works without install
     repo_root = Path(__file__).resolve().parents[1]
     src_dir = str(repo_root / "src")
     env = os.environ.copy()
+    if env_extra:
+        env.update(env_extra)
     env["PYTHONPATH"] = src_dir + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
     return subprocess.run([sys.executable, "-m", "pdf2llm", *args], cwd=cwd, capture_output=True, text=True, env=env)
 
