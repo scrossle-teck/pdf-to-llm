@@ -201,6 +201,9 @@ def chunk(ctx: typer.Context, pdf: Path = typer.Option(..., exists=True)):
     render_md = root / "render" / "combined.md"
     if render_md.exists():
         (chunks_dir / "00001.md").write_text(render_md.read_text(encoding="utf-8"), encoding="utf-8")
+        _write_chunks_index(chunks_dir, [
+            {"id": "00001", "file": "00001.md", "pages": _detect_page_range(render_md)}
+        ])
     typer.echo(f"[chunk] wrote initial chunk(s) to {chunks_dir}")
 
 
@@ -313,3 +316,16 @@ def _write_report(root: Path) -> None:
         "",
     ]
     (root / "report.md").write_text("\n".join(lines), encoding="utf-8")
+
+
+def _write_chunks_index(chunks_dir: Path, items: list[dict]) -> None:
+    import json
+    (chunks_dir / "chunks.jsonl").write_text("\n".join(json.dumps(x) for x in items) + "\n", encoding="utf-8")
+
+
+def _detect_page_range(md_path: Path) -> list[int]:
+    # Parses <!-- p:n --> anchors to return [min, max]
+    import re
+    text = md_path.read_text(encoding="utf-8")
+    pages = [int(m.group(1)) for m in re.finditer(r"<!--\s*p:(\d+)\s*-->", text)]
+    return [min(pages), max(pages)] if pages else [1, 1]
