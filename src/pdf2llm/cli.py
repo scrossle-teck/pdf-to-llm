@@ -162,8 +162,12 @@ def render(ctx: typer.Context, pdf: Path = typer.Option(..., exists=True)):
     out_root = resolve_output_root(cfg, state["out"])
     root = _doc_root(out_root, pdf)
     _touch_stage(root, "render")
-    _ensure_dir(root / "render")
-    typer.echo(f"[render] stub complete at {root}")
+    render_dir = root / "render"
+    _ensure_dir(render_dir)
+    pages_dir = root / "artifacts" / "pages"
+    combined = render_dir / "combined.md"
+    _render_markdown_from_pages(pages_dir, combined)
+    typer.echo(f"[render] wrote {combined}")
 
 
 @app.command()
@@ -173,8 +177,12 @@ def chunk(ctx: typer.Context, pdf: Path = typer.Option(..., exists=True)):
     out_root = resolve_output_root(cfg, state["out"])
     root = _doc_root(out_root, pdf)
     _touch_stage(root, "chunks")
-    _ensure_dir(root / "chunks")
-    typer.echo(f"[chunk] stub complete at {root}")
+    chunks_dir = root / "chunks"
+    _ensure_dir(chunks_dir)
+    render_md = root / "render" / "combined.md"
+    if render_md.exists():
+        (chunks_dir / "00001.md").write_text(render_md.read_text(encoding="utf-8"), encoding="utf-8")
+    typer.echo(f"[chunk] wrote initial chunk(s) to {chunks_dir}")
 
 
 @app.command()
@@ -203,3 +211,15 @@ def all(
     chunk.callback(ctx=ctx, pdf=pdf)  # type: ignore
     report.callback(ctx=ctx, pdf=pdf)  # type: ignore
     typer.echo("[all] pipeline stubs complete")
+
+def _render_markdown_from_pages(pages_dir: Path, out_path: Path) -> None:
+    import json
+    out_lines = ["---", "title: PDF to LLM", "version: 0.1.0", "---", ""]
+    if pages_dir.exists():
+        for page_file in sorted(pages_dir.glob("*.json")):
+            obj = json.loads(page_file.read_text(encoding="utf-8"))
+            pn = obj.get("page")
+            out_lines.append(f"<!-- p:{pn} -->")
+            out_lines.append(obj.get("text", ""))
+            out_lines.append("")
+    out_path.write_text("\n".join(out_lines), encoding="utf-8")
