@@ -191,7 +191,11 @@ def write_units(root: Path, subject: str, units: List[Unit]):
         domain_dir.mkdir(parents=True, exist_ok=True)
         filename = make_filename(u.title) + ".md"
         fm = yaml_front_matter(subject, u, unit_type="reference")
-        body_sections = [
+        is_example = u.title.strip().lower().startswith("example") or u.domain.lower() == "example"
+        syntax_text = "" if is_example else u.body
+        examples_text = u.body if is_example else ""
+
+        body_sections: List[str] = [
             f"# {u.title}",
             "",
             "## Purpose",
@@ -199,22 +203,26 @@ def write_units(root: Path, subject: str, units: List[Unit]):
             "## Prerequisites",
             "",
             "## Syntax",
-            "```text",
-            u.body,
-            "```",
-            "",
+        ]
+        if syntax_text.strip():
+            body_sections.extend(["```text", syntax_text, "```", ""])
+        else:
+            body_sections.append("")
+        body_sections.extend([
             "## Parameters / Inputs",
             "",
             "## Output / Response",
             "",
             "## Examples",
-            "```text",
-            u.body,
-            "```",
-            "",
+        ])
+        if examples_text.strip():
+            body_sections.extend(["```text", examples_text, "```", ""])
+        else:
+            body_sections.append("")
+        body_sections.extend([
             "## Notes",
             "",
-        ]
+        ])
         content = fm + "\n\n" + "\n".join(body_sections)
         (domain_dir / filename).write_text(content, encoding="utf-8")
 

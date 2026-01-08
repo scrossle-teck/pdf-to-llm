@@ -54,3 +54,41 @@ def test_oneshot_generates_zip_and_docs(tmp_path, monkeypatch):
     # Zip exists
     zip_path = out_dir / f"{subject}-llm-optimized-docs.zip"
     assert zip_path.exists()
+
+
+def test_examples_not_duplicated_in_syntax(tmp_path):
+    pdf_path = tmp_path / "sample_examples.pdf"
+
+    # Build a PDF with an Example heading and body text
+    doc = fitz.open()
+    page = doc.new_page()
+    page.insert_text((72, 72), "Example: Run Foo", fontsize=20)
+    page.insert_text((72, 100), "This is an example.")
+    page.insert_text((72, 120), "Run-Foo -Id 42")
+    doc.save(str(pdf_path))
+    doc.close()
+
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+
+    from src.oneshot import oneshot as cli
+    cli.callback = None
+    cli(pdf=pdf_path, out=out_dir)
+
+    subject = pdf_path.stem
+    root = out_dir / f"{subject}-docs"
+    example_dir = root / "example"
+    # At least one file exists
+    files = list(example_dir.glob("*.md"))
+    assert files, "No example files generated"
+    text = files[0].read_text(encoding="utf-8")
+
+    # Body should appear in Examples but not duplicated in Syntax
+    assert "## Examples" in text
+    assert "Run-Foo -Id 42" in text
+    # Syntax block should be empty or absent of the example command
+    syntax_section_index = text.find("## Syntax")
+    examples_section_index = text.find("## Examples")
+    assert syntax_section_index != -1 and examples_section_index != -1
+    syntax_block = text[syntax_section_index:examples_section_index]
+    assert "Run-Foo -Id 42" not in syntax_block
