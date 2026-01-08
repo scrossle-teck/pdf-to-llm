@@ -7,6 +7,7 @@ import typer
 
 from .config import PipelineConfig, load_config, resolve_output_root
 from .utils import sha256_file
+from .structure_heuristics import parse_page_text, write_blocks_jsonl
 
 
 app = typer.Typer(add_completion=False, help="PDF to LLM-ready Markdown pipeline")
@@ -122,7 +123,18 @@ def structure(ctx: typer.Context, pdf: Path = typer.Option(..., exists=True)):
     out_root = resolve_output_root(cfg, state["out"])
     root = _doc_root(out_root, pdf)
     _touch_stage(root, "structure")
-    typer.echo(f"[structure] stub complete at {root}")
+    pages_dir = root / "artifacts" / "pages"
+    blocks_path = root / "artifacts" / "structure" / "blocks.jsonl"
+    blocks = []
+    if pages_dir.exists():
+        for page_file in sorted(pages_dir.glob("*.json")):
+            import json
+            obj = json.loads(page_file.read_text(encoding="utf-8"))
+            page = int(obj.get("page", 0))
+            text = obj.get("text", "")
+            blocks.extend(parse_page_text(page, text))
+    write_blocks_jsonl(blocks, blocks_path)
+    typer.echo(f"[structure] wrote {blocks_path}")
 
 
 @app.command()
@@ -165,8 +177,12 @@ def render(ctx: typer.Context, pdf: Path = typer.Option(..., exists=True)):
     render_dir = root / "render"
     _ensure_dir(render_dir)
     pages_dir = root / "artifacts" / "pages"
+    blocks_path = root / "artifacts" / "structure" / "blocks.jsonl"
     combined = render_dir / "combined.md"
-    _render_markdown_from_pages(pages_dir, combined)
+    if blocks_path.exists():
+        _render_markdown_from_blocks(blocks_path, combined)
+    else:
+        _render_markdown_from_pages(pages_dir, combined)
     typer.echo(f"[render] wrote {combined}")
 
 
@@ -221,5 +237,34 @@ def _render_markdown_from_pages(pages_dir: Path, out_path: Path) -> None:
             pn = obj.get("page")
             out_lines.append(f"<!-- p:{pn} -->")
             out_lines.append(obj.get("text", ""))
+            out_lines.append("")
+    out_path.write_text("\n".join(out_lines), encoding="utf-8")
+
+
+def _render_markdown_from_blocks(blocks_path: Path, out_path: Path) -> None:
+    import json
+    out_lines = ["---", "title: PDF to LLM", "version: 0.1.0", "---", ""]
+    with blocks_path.open("r", encoding="utf-8") as f:
+        current_page = None
+        for line in f:
+            obj = json.loads(line)
+            page = obj.get("page")
+            if page != current_page:
+                out_lines.append(f"<!-- p:{page} -->")
+                current_page = page
+            t = obj.get("type")
+            text = obj.get("text", "")
+            if t == "heading":
+                level = int(obj.get("level", 2))
+                level = min(6, max(1, level))
+                out_lines.append("#" * level + " " + text)
+            elif t == "list_item":
+                out_lines.append(f"- {text}")
+            elif t == "code":
+                out_lines.append("```")
+                out_lines.append(text)
+                out_lines.append("```")
+            else:
+                out_lines.append(text)
             out_lines.append("")
     out_path.write_text("\n".join(out_lines), encoding="utf-8")
