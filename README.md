@@ -92,6 +92,22 @@ python -m pip install -r requirements-dev.txt
 python -m pytest -q tests
 ```
 
+### PDF to LLM CLI (scaffold)
+
+A minimal pipeline CLI is available and can be run end-to-end on a PDF to produce deterministic artifacts (manifest, per-page text):
+
+```powershell
+./setup.ps1 -InstallDev
+.\.venv\Scripts\python.exe -m pdf2llm --out .\out preflight --pdf .\docs\sample.pdf
+.\.venv\Scripts\python.exe -m pdf2llm --out .\out extract   --pdf .\docs\sample.pdf
+```
+
+You can also run the whole pipeline via the task script:
+
+```powershell
+./scripts/task.ps1 -PdfPath ".\docs\sample.pdf" -OutDir ".\out"
+```
+
 ## Setup Script (optional)
 
 Run a single script to create the venv and install dependencies (uses the project `.venv` when present):
