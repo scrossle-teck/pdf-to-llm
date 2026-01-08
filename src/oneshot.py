@@ -244,8 +244,18 @@ def package_zip(root: Path, subject: str, out_zip_dir: Path):
 
 
 @app.command()
-def oneshot(pdf: Path, out: Path = Path("out")):
+def oneshot(
+    pdf: Optional[Path] = typer.Argument(None, help="PDF to convert"),
+    out: Path = typer.Option(Path("out"), "--out", "-o", help="Output directory"),
+    pdf_opt: Optional[Path] = typer.Option(None, "--pdf", help="PDF to convert (optional alias)"),
+):
     """Run the ONE-SHOT conversion: PDF → spec-compliant docs → ZIP."""
+    if pdf is None and pdf_opt is None:
+        raise typer.BadParameter("Provide a PDF positional argument or use --pdf PATH")
+    if pdf is None:
+        pdf = pdf_opt
+    assert pdf is not None
+
     doc = fitz.open(str(pdf))
     subject = infer_subject(pdf, doc)
     doc.close()
