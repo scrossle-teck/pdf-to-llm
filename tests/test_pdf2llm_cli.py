@@ -69,3 +69,14 @@ def test_preflight_and_extract(tmp_path: Path):
     assert r5.returncode == 0, r5.stderr
     tables_dir = root / "artifacts" / "tables"
     assert tables_dir.is_dir()
+
+    # ocr: should create the directory and a status file without requiring tesseract
+    r6 = run_cli("--out", str(out_dir), "ocr", "--pdf", str(pdf_path))
+    assert r6.returncode == 0, r6.stderr
+    ocr_dir = root / "artifacts" / "ocr"
+    assert ocr_dir.is_dir()
+    status_path = ocr_dir / "status.json"
+    if status_path.exists():
+        status = json.loads(status_path.read_text(encoding="utf-8"))
+        assert "tesseract_in_path" in status
+        assert "pytesseract_import" in status

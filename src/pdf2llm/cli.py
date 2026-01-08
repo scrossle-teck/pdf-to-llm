@@ -170,7 +170,22 @@ def ocr(ctx: typer.Context, pdf: Path = typer.Option(..., exists=True)):
     out_root = resolve_output_root(cfg, state["out"])
     root = _doc_root(out_root, pdf)
     _touch_stage(root, "ocr")
-    typer.echo(f"[ocr] stub complete at {root}")
+    # Write a simple availability status; do not hard-require Tesseract
+    import json
+    import shutil
+    ocr_dir = root / "artifacts" / "ocr"
+    _ensure_dir(ocr_dir)
+    status = {
+        "tesseract_in_path": bool(shutil.which("tesseract")),
+        "pytesseract_import": False,
+    }
+    try:
+        import pytesseract  # type: ignore  # noqa: F401
+        status["pytesseract_import"] = True
+    except Exception:
+        status["pytesseract_import"] = False
+    (ocr_dir / "status.json").write_text(json.dumps(status, indent=2), encoding="utf-8")
+    typer.echo(f"[ocr] wrote status to {ocr_dir / 'status.json'}")
 
 
 @app.command()
