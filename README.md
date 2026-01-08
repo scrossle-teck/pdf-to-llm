@@ -71,13 +71,13 @@ Omit a field ONLY if truly absent in the PDF. `index.md` MUST use `type: index`.
 
 Each executable unit file MUST contain:
 
+```text
 # <Exact Title>
 
 ## Purpose
 ## Prerequisites
 
 ## Syntax
-```text
 <verbatim syntax from PDF>
 ```
 
@@ -101,6 +101,7 @@ Warnings, constraints, edge cases, REST notes, limits.
 ## Common‑Concept Normalization
 
 Repeated global material (authentication notes, shared constraints, common flags, pagination boilerplate) MUST be:
+
 - Removed from individual files
 - Normalized into `shared/common-concepts.md`
 - Referenced implicitly, not duplicated
@@ -115,6 +116,7 @@ Repeated global material (authentication notes, shared constraints, common flags
 ## Validation Before Zipping
 
 Confirm:
+
 - README.md exists, human‑oriented, no front‑matter
 - index.md exists, machine‑oriented, has front‑matter
 - Every other file has valid front‑matter as first block
@@ -157,4 +159,3 @@ The conversion CLI will ingest a single PDF and emit the ZIP with the exact stru
 ## License & Provenance
 
 This repository produces documentation derived from user‑provided PDFs. Ensure you have rights to process and redistribute resulting docs. Do not commit real secrets.
-
