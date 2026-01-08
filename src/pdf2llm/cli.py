@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 
 import typer
 
@@ -170,22 +170,59 @@ def ocr(ctx: typer.Context, pdf: Path = typer.Option(..., exists=True)):
     out_root = resolve_output_root(cfg, state["out"])
     root = _doc_root(out_root, pdf)
     _touch_stage(root, "ocr")
-    # Write a simple availability status; do not hard-require Tesseract
     import json
     import shutil
     ocr_dir = root / "artifacts" / "ocr"
     _ensure_dir(ocr_dir)
+
+    # Availability detection
     status = {
         "tesseract_in_path": bool(shutil.which("tesseract")),
         "pytesseract_import": False,
+        "pages_processed": 0,
     }
     try:
-        import pytesseract  # type: ignore  # noqa: F401
+        import pytesseract  # type: ignore
         status["pytesseract_import"] = True
     except Exception:
         status["pytesseract_import"] = False
+        (ocr_dir / "status.json").write_text(json.dumps(status, indent=2), encoding="utf-8")
+        typer.echo(f"[ocr] wrote status to {ocr_dir / 'status.json'} (pytesseract not available)")
+        return
+
+    # Perform OCR only where text is empty; allow override via env vars
+    pages_dir = root / "artifacts" / "pages"
+    to_process: List[int] = []
+    if pages_dir.exists():
+        for page_file in sorted(pages_dir.glob("*.json")):
+            obj = json.loads(page_file.read_text(encoding="utf-8"))
+            text = obj.get("text", "") or ""
+            pn = int(obj.get("page", 0))
+            if len(text.strip()) == 0:
+                to_process.append(pn)
+    else:
+        # Fallback: OCR all pages if no text artifacts present
+        pages, _ = _pdf_basic_info(pdf)
+        to_process = list(range(1, pages + 1))
+
+    used_cmd = None
+    # Optional override via environment variable PDF2LLM_TESSERACT_CMD
+    import os
+    env_cmd = os.environ.get("PDF2LLM_TESSERACT_CMD")
+    if env_cmd:
+        try:
+            import pytesseract  # type: ignore
+            pytesseract.pytesseract.tesseract_cmd = env_cmd
+            used_cmd = env_cmd
+        except Exception:
+            used_cmd = None
+
+    count = _ocr_pages(pdf, ocr_dir, to_process)
+    status["pages_processed"] = count
+    if used_cmd:
+        status["tesseract_cmd"] = used_cmd
     (ocr_dir / "status.json").write_text(json.dumps(status, indent=2), encoding="utf-8")
-    typer.echo(f"[ocr] wrote status to {ocr_dir / 'status.json'}")
+    typer.echo(f"[ocr] processed {count} page(s); status at {ocr_dir / 'status.json'}")
 
 
 @app.command()
@@ -341,6 +378,34 @@ def _extract_tables(pdf: Path, out_dir: Path) -> int:
                     "table_index": ti,
                     "file": csv_path.name,
                 }) + "\n")
+    return n
+
+
+def _ocr_pages(pdf: Path, out_dir: Path, pages: List[int], dpi: int = 300) -> int:
+    import fitz  # type: ignore
+    from PIL import Image
+    import io
+    import pytesseract  # type: ignore
+
+    _ensure_dir(out_dir)
+    idx = out_dir / "ocr.jsonl"
+    n = 0
+    with fitz.open(pdf) as doc, idx.open("w", encoding="utf-8") as index_f:
+        for pn in pages:
+            i = pn - 1
+            try:
+                page = doc.load_page(i)
+                zoom = dpi / 72.0
+                mat = fitz.Matrix(zoom, zoom)
+                pix = page.get_pixmap(matrix=mat, alpha=False)
+                img_bytes = pix.tobytes("png")
+                img = Image.open(io.BytesIO(img_bytes))
+                text = pytesseract.image_to_string(img)
+            except Exception:
+                text = ""
+            (out_dir / f"p{pn:05d}.txt").write_text(text, encoding="utf-8")
+            index_f.write(f"{{\"page\": {pn}, \"file\": \"p{pn:05d}.txt\"}}\n")
+            n += 1
     return n
 
 
