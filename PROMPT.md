@@ -1,11 +1,11 @@
-# Workspace Prompt — PowerShell + Python Template
+# Workspace Prompt — ONE‑SHOT PDF→LLM Converter
 
-Use the project's virtual environment for all Python work and keep a clean, recoverable Git history. This prompt provides copy/paste commands to get started quickly.
+Use the project's virtual environment for all Python work and run the one‑shot conversion pipeline to produce an LLM‑optimized ZIP from a single authoritative PDF.
 
 Why
 
+- Deterministic, retrieval‑safe outputs with enforced YAML front‑matter.
 - Isolated and reproducible Python dependencies via `.venv`.
-- Consistent commits and an easy-to-navigate Git history.
 
 PowerShell quickstart (copy/paste):
 
@@ -25,12 +25,8 @@ python -m pip install -r requirements-dev.txt
 # Run tests (if using pytest)
 python -m pytest -q tests
 
-# Example: run your Python entry point
-# Adjust to your project layout (module, script, etc.)
-python src\main.py
-
-# Example: run a PowerShell helper script
-./scripts/task.ps1 -Verbose
+# Example: run the conversion task (PowerShell helper)
+./scripts/task.ps1 -PdfPath ".\docs\sample.pdf" -OutDir ".\out" -Verbose
 ```
 
 Notes
@@ -131,7 +127,7 @@ Assistant-driven auto-commit (optional)
 - Decide whether to test-gate commits; ensure `.gitignore` excludes secrets.
 - Assistant can add/commit per logical chunk and push to upstream.
 
-Project structure (suggested)
+Project structure
 
 ```text
 repo-root/
@@ -143,7 +139,7 @@ repo-root/
   .env                # Local secrets (ignored)
   .gitignore
   PROMPT.md           # This file
-  README.md
+  README.md           # ONE‑SHOT specification and usage
 ```
 
 Assistant reminder

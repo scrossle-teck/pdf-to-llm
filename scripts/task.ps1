@@ -7,7 +7,7 @@ param(
     [int]$MaxWorkers = 0
 )
 
-Write-Host "[task.ps1] Starting template task..."
+Write-Host "[task.ps1] Starting ONE-SHOT conversion task..."
 if ($Verbose) {
     Write-Host "[task.ps1] Verbose mode enabled." -ForegroundColor Cyan
 }

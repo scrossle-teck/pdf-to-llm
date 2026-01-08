@@ -1,6 +1,6 @@
-# Testing (Template)
+# Testing
 
-Reusable guidance for future Python projects.
+Guidance for this repository's Python tests.
 
 ## 1) Environment
 

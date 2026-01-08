@@ -1,6 +1,6 @@
 # Copilot Instructions for This Repository
 
-This repository is a lightweight template for greenfield PowerShell + Python projects with a clean, test-gated Git workflow. Use this document as high-priority context when assisting within this folder.
+This repository implements a ONE‑SHOT PDF→LLM converter that ingests a single authoritative PDF and produces a structured, high‑fidelity Markdown documentation set optimized for small LLMs, packaged as one ZIP. Use this document as high‑priority context when assisting within this folder.
 
 ## Assumptions
 - Shell: Windows PowerShell (`pwsh`). Adapt commands for POSIX when needed.
@@ -95,7 +95,7 @@ python -m pytest tests/test_main.py::test_greet_default -q
 ```
 - Use `gctt` for test-gated commits; it runs tests then commits/pushes only on pass.
 
-## Project Structure (suggested)
+## Project Structure
 ```
 repo-root/
   src/                # Python source (e.g., main.py, __init__.py)
@@ -140,6 +140,6 @@ Unblock-File .\setup.ps1
 - A `.vscode/tasks.json` task can run the bootstrap via `pwsh -File assistant-bootstrap.ps1`.
 
 ## References
-- `PROMPT.md`: venv quickstart, condensed Git workflow, commands, and template guidance.
-- `README.md`: helper usage, setup, Git essentials, and conventional commits.
+- `PROMPT.md`: venv quickstart, condensed workflow, and ONE‑SHOT converter guidance.
+- `README.md`: ONE‑SHOT specification, output structure, and usage.
 - `TESTING.md`: environment, install, run tests, patterns, and troubleshooting.

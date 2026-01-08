@@ -1,5 +1,2 @@
-Initialize a repo and first push:
-git init
-git add -A && git commit -m "chore: initial template"
-git remote add origin https://github.com/<owner>/<repo>.git
-git push -u origin HEAD
+Deprecated: This repository is not a generic template.
+It is a ONE‑SHOT PDF→LLM converter. See README.md for usage.

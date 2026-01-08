@@ -87,171 +87,159 @@ python -m venv .venv
 # Install dependencies (if present)
 python -m pip install -r requirements.txt
 python -m pip install -r requirements-dev.txt
+# PDF → LLM Optimized Docs — ONE‑SHOT Converter
 
-# Run tests (pytest)
-python -m pytest -q tests
+This repository is for a STRICT technical documentation conversion tool that ingests a single authoritative PDF and produces a structured, high‑fidelity Markdown documentation set optimized for SMALL LLMs. It is deterministic, retrieval‑safe, and packaged as one ZIP.
+
+Key goals:
+- Semantically lossless conversion (instructions, parameters, examples, constraints)
+- Optimized for small LLMs (GPT‑4.1, GPT‑4o, GPT‑5 mini)
+- Deterministic outputs with strict chunking (500–1200 tokens/file)
+- YAML front‑matter enforced in all files except README.md
+- Exactly one top‑level directory packaged in one ZIP
+
+## Output Package
+
+ZIP name:
+
+```
+<inferred-subject>-llm-optimized-docs.zip
 ```
 
-### PDF to LLM CLI (scaffold)
+Root directory structure:
 
-A minimal pipeline CLI is available and can be run end-to-end on a PDF to produce deterministic artifacts (manifest, per-page text):
-
-```powershell
-./setup.ps1 -InstallDev
-.\.venv\Scripts\python.exe -m pdf2llm --out .\out preflight --pdf .\docs\sample.pdf
-.\.venv\Scripts\python.exe -m pdf2llm --out .\out extract   --pdf .\docs\sample.pdf
+```
+<inferred-subject>-docs/
+├── README.md                  # Human-facing installation & usage (no front‑matter)
+├── index.md                   # Machine-oriented navigation index (has front‑matter)
+├── <domain-1>/
+├── <domain-2>/
+├── ...
+└── shared/
+    └── common-concepts.md
 ```
 
-You can also run the whole pipeline via the task script:
+Rules:
+- Multiple files ONLY (no monolithic docs)
+- Exactly ONE atomic unit per file
+- Directory names = functional groupings found in the PDF
+- Filenames = exact symbolic identifiers (command name, API name, function name)
 
-```powershell
-./scripts/task.ps1 -PdfPath ".\docs\sample.pdf" -OutDir ".\out"
+## Front‑Matter Schema (Required Everywhere Except README.md)
+
+Each Markdown file MUST begin with YAML front‑matter as the FIRST content:
+
+```yaml
+---
+title: <exact symbolic name>
+type: <command|endpoint|function|concept|reference|index>
+product: <inferred product/system name>
+vendor: <inferred vendor, if present>
+language: <CLI or programming language if applicable>
+domain: <functional grouping>
+llm_use: <procedural|reference|conceptual>
+prerequisites:
+  - <explicit dependencies or setup>
+inputs: <string|list|none>
+outputs: <string|list|none>
+state_effect: <creates|updates|deletes|queries|none>
+tags:
+  - <keywords>
+source:
+  type: pdf
+  title: <PDF title>
+  section: <PDF section heading if known>
+---
 ```
 
-### OCR
+Omit a field ONLY if truly absent in the PDF. `index.md` MUST use `type: index`. `README.md` MUST NOT include front‑matter.
 
-The pipeline includes an OCR stage that rasterizes pages and extracts text via Tesseract (pytesseract). Use it when PDFs contain scanned pages or low-quality text:
+## Atomic File Body Structure (Executable Units)
 
-```powershell
-# Run only the OCR stage (default DPI 200)
-.\.venv\Scripts\python.exe -m pdf2llm --out .\out ocr --pdf .\docs\sample.pdf --dpi 200
+Each executable unit file MUST contain:
 
-# Force re-run even if outputs exist
-.\.venv\Scripts\python.exe -m pdf2llm --out .\out ocr --pdf .\docs\sample.pdf --force
-
-# Optional: point directly to tesseract executable if not on PATH
-$env:PDF2LLM_TESSERACT_CMD = 'C:\Program Files\Tesseract-OCR\tesseract.exe'
-.\.venv\Scripts\python.exe -m pdf2llm --out .\out ocr --pdf .\docs\sample.pdf
 ```
+# <Exact Title>
 
-Outputs are written under the deterministic output root:
-- `ocr/pNNNNN.txt` — per-page OCR text files
-- `ocr.jsonl` — index of OCR results
+## Purpose
+## Prerequisites
 
-Notes:
-- Tests that require Tesseract will be skipped automatically if it's unavailable.
-- DPI can be tuned via `--dpi` for accuracy/speed trade-offs.
-
-## Setup Script (optional)
-
-Run a single script to create the venv and install dependencies (uses the project `.venv` when present):
-
-```powershell
-./setup.ps1 -InstallDev
-```
-
-- Installs `requirements.txt`; `-InstallDev` also installs `requirements-dev.txt`.
-- Falls back to system `python` if `.venv\Scripts\python.exe` is not found.
-
-## Assistant Bootstrap (optional)
-
-- `assistant-context.md`: manifest of pinned files/folders the agent should refresh first.
-- `assistant-bootstrap.ps1`: prints a workspace summary, reads `assistant-context.md`, and can run `./setup.ps1 -InstallDev`.
-- VS Code task: run via Command Palette — "Assistant: Bootstrap".
-
-```powershell
-pwsh -File .\assistant-bootstrap.ps1 -InstallDev
-```
-
-## Project Structure (suggested)
-
+## Syntax
 ```text
-repo-root/
-  src/                # Python source
-  scripts/            # PowerShell helpers
-  tests/              # Test suite (pytest)
-  requirements.txt    # Runtime deps
-  requirements-dev.txt# Dev/test deps
-  .env                # Local secrets (ignored)
-  .gitignore
-  PROMPT.md
-  README.md
+<verbatim syntax from PDF>
 ```
 
-## Dependencies & Testing
+## Parameters / Inputs
+- Preserve required vs optional, data types, position/index
+- Preserve enumerated/allowed values, pipeline/streaming, wildcard behavior
 
-- `requirements.txt` — runtime packages.
-- `requirements-dev.txt` — dev/test packages (e.g., `pytest`).
-- Run tests: `python -m pytest -q tests` (or use `gctt` for test-gated commits).
+## Output / Response
 
-## Configuration & Secrets
+## Examples
+```text
+<ALL examples verbatim from PDF>
+```
 
-- Keep secrets in `.env` and ensure they are ignored; do not commit.
-- Prefer environment variables or a `.env` loader over hardcoding.
-- Corporate TLS interception: set a CA bundle for Python requests:
+## Notes
+Warnings, constraints, edge cases, REST notes, limits.
+```
 
-  ```powershell
-  $env:REQUESTS_CA_BUNDLE = 'C:\path\to\company_ca.pem'
-  ```
+## Common‑Concept Normalization
 
-## Git Essentials
+Repeated global material (authentication notes, shared constraints, common flags, pagination boilerplate) MUST be:
+- Removed from individual files
+- Normalized into `shared/common-concepts.md`
+- Referenced implicitly, not duplicated
 
-Use these commands for a clean, recoverable workflow (see `PROMPT.md` for details):
+## Fidelity Rules (Non‑Negotiable)
 
-- Identity (once per machine):
+- Treat PDF as canonical truth
+- Preserve ambiguity explicitly
+- No inferred behavior or invented examples
+- No merged files or semantic compression
 
-  ```powershell
-  git config --global user.name "Your Name"
-  git config --global user.email "you@example.com"
-  git config --global init.defaultBranch main
-  ```
+## Validation Before Zipping
 
-- Initialize and connect a repo:
+Confirm:
+- README.md exists, human‑oriented, no front‑matter
+- index.md exists, machine‑oriented, has front‑matter
+- Every other file has valid front‑matter as first block
+- Each file contains exactly one atomic unit
+- Parameter semantics preserved
+- Examples are verbatim
+- Repeated boilerplate normalized into `shared/common-concepts.md`
+- ZIP contains exactly one top‑level directory
 
-  ```powershell
-  git init
-  git remote add origin https://github.com/<owner>/<repo>.git
-  git remote -v
-  ```
+## Usage
 
-- Branching and commits:
+Environment setup (Windows-first):
 
-  ```powershell
-  git checkout -b feat/short-task-name
-  git add -A
-  git commit -m "feat: concise message"
-  ```
+```powershell
+./setup.ps1 -InstallDev
+. ./.venv/Scripts/Activate.ps1
+```
 
-- First push (set upstream):
+Tesseract OCR (optional for scanned PDFs):
 
-  ```powershell
-  git push -u origin HEAD
-  ```
+```powershell
+# If tesseract.exe is not on PATH, set env var
+$env:PDF2LLM_TESSERACT_CMD = 'C:\Program Files\Tesseract-OCR\tesseract.exe'
+```
 
-- Test-gated commit (safer):
+Project tasks:
+- Run tests: `python -m pytest -q tests`
+- Generate summary report for an output root (development aid): use `src/report.py` programmatically to produce `report.md` with OCR/tables/figures counts.
 
-  ```powershell
-  .\.venv\Scripts\python.exe -m pytest -q
-  if ($LASTEXITCODE -eq 0) {
-    git add -A
-    git commit -m "test: passing suite"
-    git push
-  } else {
-    Write-Host "Tests failed; not committing."
-  }
-  ```
+The conversion CLI will ingest a single PDF and emit the ZIP with the exact structure above, enforcing front‑matter and atomicity. Packaging and validation are part of the oneshot command.
 
-- Pull requests:
+## Development Notes
 
-  ```powershell
-  git fetch --all
-  git push -u origin HEAD
-  ```
+- Deterministic outputs and chunk sizes target 500–1200 tokens per file.
+- YAML front‑matter is mandatory for all files except `README.md`.
+- OCR is used when the PDF contains scanned pages; otherwise text extraction is preferred.
+- Tests include report generation and CSV/index consistency checks.
 
-- Recovery basics:
-  `git status`, `git diff`, `git restore`, `git reset --soft HEAD~1`, `git reset --hard HEAD~1`, and `git log --oneline --graph --decorate`.
+## License & Provenance
 
-### Commit Messages (Conventional Commits)
+This repository produces documentation derived from user‑provided PDFs. Ensure you have rights to process and redistribute resulting docs. Do not commit real secrets.
 
-- Format: `type(scope)!: subject` (scope and `!` are optional; `!` marks breaking changes).
-- Common types: `feat`, `fix`, `docs`, `test`, `chore`, `refactor`, `perf`, `build`, `ci`, `revert`.
-- Breaking changes: add `!` after type/scope and/or a footer `BREAKING CHANGE:` explaining impact.
-- Examples:
-  - `feat(task): add PowerShell task script with -RunTests`
-  - `test: add pytest for greet() default and custom`
-  - `chore: replace template ignore with .gitignore`
-  - `feat(api)!: remove deprecated flags` + footer `BREAKING CHANGE: -OldFlag removed; use -NewFlag`
-
-## References
-
-- `PROMPT.md` — venv quickstart, condensed Git workflow, commands, and template guidance.
